@@ -11,3 +11,6 @@ HOW TO USE:
 HOW TO COMPILE EXE (using Cx_Freeze):
 
 python3 setup.py build
+
+
+Python Rcon from: https://github.com/edvinerikson/frostbite-rcon-utils-python
