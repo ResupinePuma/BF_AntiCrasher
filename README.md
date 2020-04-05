@@ -1,16 +1,8 @@
 # BF_AntiCrasher
-Script to prevent people crash your server
+Plugin for Procon to prevent people crash your server
 
 Supports BF3/4
 
 HOW TO USE:
-1) Edit config
-2) python3 app.py
-
-
-HOW TO COMPILE EXE (using Cx_Freeze):
-
-python3 setup.py build
-
-
-Python Rcon from: https://github.com/edvinerikson/frostbite-rcon-utils-python
+1) Place this into Plugin/{GAME} folder
+2) Set in options game version (bf3 or bf4) 
