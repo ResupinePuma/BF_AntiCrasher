@@ -8,6 +8,7 @@ import socket
 from threading import Thread
 from frostbite_rcon_utils import *
 from config import *
+import datetime
 
 headers ={
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:74.0) Gecko/20100101 Firefox/68.0",
@@ -81,7 +82,7 @@ class RCon():
                     # if b'punkBuster' in self.connection.recv(2048):
                     #     continue
                     #print(self.connection.recv(2048))
-                    data_buffer += self.connection.recv(4096)
+                    data_buffer += self.connection.recv(16384)
                 packet = decode_packet(data_buffer)                
                 Thread(target=self.__DecodeEvent, args=[packet]).start()
                 #self.__DecodeEvent(packet['words'])
@@ -114,17 +115,40 @@ def GetUserInfo(username):
     res = requests.get(url, headers=headers)
     if not res.status_code == 200:
         raise Exception()
-    if '"overviewStats":null,' in res.text:
-        return (personaId, 0, 0, username)
-    score = re.findall(r'''\"scorePerMinute\":(.*?),''', res.text)[0]
-    time = re.findall(r'''\"timePlayed\":(.*?),''', res.text)[0]
-    return (personaId, score, time, username)
+    data = json.loads(res.text)
+
+    if data["data"].get("overviewStats"):
+        stats = data["data"]["overviewStats"]
+        try:
+            for d in stats.values():
+                if type(d) == int:
+                    if not (d < 2147483647 or d > -2147483647):
+                        return (personaId, False, username)   
+            return (personaId, True, username)
+        except ValueError:
+            return (personaId, False, username)
+
+    if username == BanUser:
+        return (personaId, False, username) 
+    
+    return (personaId, True, username)
+
+    # return (personaId, '', 0, username)
+    #######################################          
+    # if '"overviewStats":null,' in res.text:
+    #    return (personaId, 0, 0, username)
+    # score = re.findall(r'''\"scorePerMinute\":(.*?),''', res.text)[0]
+    # time = re.findall(r'''\"timePlayed\":(.*?),''', res.text)[0]
+    # return (personaId, score, time, username)
         
 def CheckParams(player, guid):
-    if (int(player[1]) > score_per_minute or int(player[2]) > played_time):
-        print(f"{player[3]} banned " + str(rcon.Command(f"banList.add guid {guid} perm Crasher({player[3]})")))
+    if (player[1] == False):
+        print(f"{player[2]} banned " + str(rcon.Command(f"banList.add guid {guid} perm Crasher({player[2]} {player[0]})")))
+        f = open("ban.log", "w")
+        f.write(f"{str(datetime.datetime.now())} | {guid} | {player[0]} | {player[2]}\n")
+        f.close()
     else:
-        print(f"{player[3]} joined")
+        print(f"{player[2]} joined")
 
 
 def OnJoin(event):
