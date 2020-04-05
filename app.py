@@ -123,13 +123,13 @@ def GetUserInfo(username):
             for d in stats.values():
                 if type(d) == int:
                     if not (d < 2147483647 or d > -2147483647):
-                        return (personaId, False, username)   
-            return (personaId, True, username)
+                        return (personaId, False, username)
+            if username == BanUser:
+                return (personaId, False, username)
+            else:
+                return (personaId, True, username)
         except ValueError:
             return (personaId, False, username)
-
-    if username == BanUser:
-        return (personaId, False, username) 
     
     return (personaId, True, username)
 
