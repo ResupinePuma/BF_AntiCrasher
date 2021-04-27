@@ -7,11 +7,8 @@ import json, requests, re, random
 import socket
 from threading import Thread
 from bf_anticrasher.frostbite_rcon_utils import *
-<<<<<<< HEAD
 from config import *
-=======
 from bf_anticrasher.config import *
->>>>>>> 5b10f81c4c032754a09c4b657b1747b876490aae
 import datetime
 
 
