@@ -6,7 +6,7 @@
 import json, requests, re, random
 import socket
 from threading import Thread
-from frostbite_rcon_utils import *
+from bf_anticrasher.frostbite_rcon_utils import *
 from config import *
 import datetime
 
