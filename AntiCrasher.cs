@@ -239,17 +239,18 @@ namespace PRoConEvents
 		}
 
 		public override void OnPlayerJoin(string soldierName) {
-			// if (this.whitelist.Split('\n').Contains(soldierName))
-			// {
-			// 	this.ExecuteCommand("procon.protected.pluginconsole.write", "whitelisted soldier: " + soldierName);
-			// 	return;
-			// }
+			if (this.whitelist.Contains(soldierName))
+			{
+				this.ExecuteCommand("procon.protected.pluginconsole.write", "whitelisted soldier: " + soldierName);
+				return;
+			}
 
 			if (soldierName.Length > 16)
 			{
 				this.ExecuteCommand("procon.protected.send", "banList.add", "name", soldierName.ToString(), "perm", "Crasher " + soldierName.ToString());
 				this.ExecuteCommand("procon.protected.send", "banList.save");
 				this.ExecuteCommand("procon.protected.send", "banList.list");
+				this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", "name", soldierName.ToString(), "get out");
 				return;
 			}
 			string data = SendRequestWithProxy("POST", string.Format("https://battlelog.battlefield.com/{0}/search/query/", this.bf), string.Format("query={0}", soldierName));
