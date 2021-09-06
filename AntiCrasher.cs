@@ -1,10 +1,3 @@
-/* LANmode.cs
-
-v1.0.0.0
-by Despo
-
-*/
-
 using System;
 using System.IO;
 using System.Text;
@@ -34,12 +27,23 @@ namespace PRoConEvents
 	//Aliases
 	using EventType = PRoCon.Core.Events.EventType;
 	
-	public class Huinya : PRoConPluginAPI, IPRoConPluginInterface
+	public class AntiCrasher4 : PRoConPluginAPI, IPRoConPluginInterface
 	{
         public string bf;
+		public string nick;
+		public string proxies;
+		public string whitelist;
+		public List<string> proxies_list;
+		public string last_worked;
 
-        public Huinya()
-        { this.bf = "bf3"; }
+		public AntiCrasher4()
+        { this.bf = "bf3";
+		  this.nick = "";
+		this.whitelist = "";
+		this.proxies = "";
+		this.proxies_list = new List<string>();
+		this.last_worked = "";
+		}
 		
 		
 		public void ConsoleWrite(string msg)
@@ -86,6 +90,9 @@ namespace PRoConEvents
 		{
 			List<CPluginVariable> lstReturn = new List<CPluginVariable>();
 			lstReturn.Add(new CPluginVariable("Main|Game version (bf3 or bf4)", typeof(string), this.bf));
+			lstReturn.Add(new CPluginVariable("Main|Ban Nickname", typeof(string), this.nick));
+			lstReturn.Add(new CPluginVariable("Main|Proxies", typeof(string), this.proxies));
+			lstReturn.Add(new CPluginVariable("Main|Whitelist", typeof(string), this.whitelist));
 			return lstReturn;
 		}
 		
@@ -93,6 +100,9 @@ namespace PRoConEvents
 		{
 			List<CPluginVariable> lstReturn = new List<CPluginVariable>();
 			lstReturn.Add(new CPluginVariable("Game version (bf3 or bf4)", typeof(string), this.bf));
+			lstReturn.Add(new CPluginVariable("Ban Nickname", typeof(string), this.nick));
+			lstReturn.Add(new CPluginVariable("Proxies", typeof(string), this.proxies));
+			lstReturn.Add(new CPluginVariable("Whitelist", typeof(string), this.whitelist));
 			return lstReturn;
 		}
 
@@ -102,24 +112,51 @@ namespace PRoConEvents
 			{
 				this.bf = strValue;
 			}
+			else if (strVariable.CompareTo("Ban Nickname") == 0)
+			{
+				this.nick = strValue;
+			}
+			else if (strVariable.CompareTo("Whitelist") == 0)
+			{
+				this.whitelist = strValue;
+			}
+			else if (strVariable.CompareTo("Proxies") == 0)
+			{
+				this.proxies = strValue;
+				if (strValue.Length > 0)
+					this.proxies_list = strValue.Split(new[] { Environment.NewLine }, StringSplitOptions.None).ToList();
+			}
 		}
 
 
-		public string SendRequest(string method, string url, string data)
+		public string SendRequest(string method, string url, string data = "", string proxy = "")
 		{
-			var request = WebRequest.Create(url);
+			var request = (HttpWebRequest)WebRequest.Create(url);
+
+			if (proxy.Length > 0)
+			{
+				WebProxy myproxy = new WebProxy(proxy, true);
+				request.Proxy = myproxy;
+			}
 			request.Method = method;
 			byte[] byteArray = System.Text.Encoding.UTF8.GetBytes(data);
-			// устанавливаем тип содержимого - параметр ContentType
-			request.Headers.Add ("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:74.0) Gecko/20100101 Firefox/68.0");
+			request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:74.0) Gecko/20100101 Firefox/68.0";
+			//         try { request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:74.0) Gecko/20100101 Firefox/68.0"; }
+			//catch { }		
+			//request.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:74.0) Gecko/20100101 Firefox/68.0");
 			request.Headers.Add("Upgrade-Insecure-Requests", "1");
 			request.ContentType = "application/x-www-form-urlencoded; charset=UTF-8";
-			// Устанавливаем заголовок Content-Length запроса - свойство ContentLength
 			request.ContentLength = byteArray.Length;
-			using (Stream dataStream = request.GetRequestStream())
-				dataStream.Write(byteArray, 0, byteArray.Length);
+			if (data.Length > 0)
+				using (Stream dataStream = request.GetRequestStream())
+					dataStream.Write(byteArray, 0, byteArray.Length);
 
-			WebResponse response = request.GetResponse();
+			//WebResponse response = request.GetResponse();
+
+			if (proxy.Length > 0)
+			{
+				last_worked = proxy;
+			}
 
 			data = "";
 			using (Stream s = request.GetResponse().GetResponseStream())
@@ -132,6 +169,44 @@ namespace PRoConEvents
 				}
 			}
 
+		}
+
+		public string SendRequestWithProxy(string method, string url, string data = "")
+		{
+			List<string> tmp = this.proxies_list;
+
+			if (this.last_worked.Length > 0)
+			{
+				try
+				{
+					return SendRequest(method, url, data, this.last_worked);
+				}
+				catch (Exception ex)
+				{
+					this.last_worked = "";
+					return SendRequestWithProxy(method, url, data);
+				}
+			}
+			else
+			{
+				foreach (string prx in tmp)
+				{
+					try
+					{
+						return SendRequest(method, url, data, prx);
+					}
+					catch (Exception ex)
+					{
+						try
+						{
+							this.proxies_list.Remove(prx);
+						}
+						catch
+						{ }
+					}
+				}
+			}
+			return SendRequest(method, url, data);
 		}
 
 		public void OnPluginLoaded(string strHostName, string strPort, string strPRoConVersion) {
@@ -156,7 +231,7 @@ namespace PRoConEvents
 		
 		public override void OnListPlayers(List<CPlayerInfo> lstPlayers, CPlayerSubset cpsSubset) {}
 
-		public static Dictionary<K, V> HashtableToDictionary<K, V>(Hashtable table)
+		public Dictionary<K, V> HashtableToDictionary<K, V>(Hashtable table)
 		{
 			return table
 			  .Cast<DictionaryEntry>()
@@ -164,13 +239,26 @@ namespace PRoConEvents
 		}
 
 		public override void OnPlayerJoin(string soldierName) {
-			this.ExecuteCommand("procon.protected.pluginconsole.write", soldierName);
-			string data = SendRequest("POST", string.Format("https://battlelog.battlefield.com/{0}/search/query/", "bf4"), string.Format("query={0}", soldierName));
+			// if (this.whitelist.Split('\n').Contains(soldierName))
+			// {
+			// 	this.ExecuteCommand("procon.protected.pluginconsole.write", "whitelisted soldier: " + soldierName);
+			// 	return;
+			// }
+
+			if (soldierName.Length > 16)
+			{
+				this.ExecuteCommand("procon.protected.send", "banList.add", "name", soldierName.ToString(), "perm", "Crasher " + soldierName.ToString());
+				this.ExecuteCommand("procon.protected.send", "banList.save");
+				this.ExecuteCommand("procon.protected.send", "banList.list");
+				return;
+			}
+			string data = SendRequestWithProxy("POST", string.Format("https://battlelog.battlefield.com/{0}/search/query/", this.bf), string.Format("query={0}", soldierName));
 			var ja = JSON.JsonDecode(data);
 			string id = "";
 			var dict = HashtableToDictionary<string, object>(ja as Hashtable);
 			if (dict["data"] != null)
 			{
+				
 				foreach (Hashtable key in dict["data"] as ArrayList)
 				{
 					var info = HashtableToDictionary<string, object>(key as Hashtable);
@@ -178,10 +266,12 @@ namespace PRoConEvents
 						id = info["personaId"].ToString();
 					break;
 				}
-
 			}
-			else
+			else{
 				return;
+				
+			}
+				
 			string url = "";
 			switch (bf)
 			{
@@ -192,50 +282,58 @@ namespace PRoConEvents
 					url = string.Format("https://battlelog.battlefield.com/bf3/overviewPopulateStats/{0}/None/1/", id);
 					break;
 			}
-			data = SendRequest("GET", url, null);
+			data = SendRequestWithProxy("GET", url);
 			var stats = JSON.JsonDecode(data);
 			var statsa = HashtableToDictionary<string, object>(stats as Hashtable);
 			statsa = HashtableToDictionary<string, object>(statsa["data"] as Hashtable);
 
 			if (statsa["overviewStats"] != null)
 			{
+				
 				statsa = HashtableToDictionary<string, object>(statsa["overviewStats"] as Hashtable);
+				if (soldierName == this.nick){
+					ConsoleWrite("Debug " + this.nick);
+					this.ExecuteCommand("procon.protected.send", "banList.add", "name", soldierName.ToString(), "perm", "Crasher " +soldierName.ToString());
+					this.ExecuteCommand("procon.protected.send", "banList.save");
+					this.ExecuteCommand("procon.protected.send", "banList.list");
+					return;
+				}
 				foreach (KeyValuePair<string, object> key in statsa)
 					if (key.Value != null)
 					{
 						string name = key.Value.GetType().Name;
-						switch (name)
-						{
-							default:
-								continue;
-							case "Int32":
-								continue;
-							case "Int64":
-								int value = 0;
-								bool ban = Int32.TryParse(key.Value.ToString(), out value);
-								if (!ban)
-									break;
-								else
-									continue;
-							case "Double":
-								int ii = 0;
-								bool i = Int32.TryParse(key.Value.ToString(), out ii);
-								if (i)
-									continue;
-								else
-								{
-									double db = 0;
-									i = Double.TryParse(key.Value.ToString(), out db);
-									if (db < int.MaxValue && db > int.MinValue)
-										continue;										
-									else
-									{
-										this.ExecuteCommand("procon.protected.send", "admin.banPlayer", soldierName, soldierName);
-										break;
-									}
-								}
-						}
-					}
+						//this.ExecuteCommand("procon.protected.pluginconsole.write", "^bAntiCrasher  | GOTCHA!");
+                        switch (name)
+                        {
+                            default:
+                                continue;
+                            case "Int32":
+                                continue;
+                            case "Int64":
+                                bool ban = Int32.TryParse(key.Value.ToString(), out int value);
+                                if (!ban)
+                                    break;
+                                else
+                                    continue;
+                            case "Double":
+                                bool i = Int32.TryParse(key.Value.ToString(), out int ii);
+                                if (i)
+                                    continue;
+                                else
+                                {
+                                    i = Double.TryParse(key.Value.ToString(), out double db);
+                                    if (db < int.MaxValue && db > int.MinValue)
+                                        continue;
+                                    else
+                                    {
+                                        this.ExecuteCommand("procon.protected.send", "banList.add", "name", soldierName.ToString(), "perm", "Crasher " + soldierName.ToString());
+                                        this.ExecuteCommand("procon.protected.send", "banList.save");
+                                        this.ExecuteCommand("procon.protected.send", "banList.list");
+                                        break;
+                                    }
+                                }
+                        }
+                    }
 
 			}
 
@@ -271,6 +369,5 @@ namespace PRoConEvents
 	}
 
 }
-
 
 
