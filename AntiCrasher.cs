@@ -27,7 +27,7 @@ namespace PRoConEvents
 	//Aliases
 	using EventType = PRoCon.Core.Events.EventType;
 	
-	public class AntiCrasher4 : PRoConPluginAPI, IPRoConPluginInterface
+	public class AntiCrasher : PRoConPluginAPI, IPRoConPluginInterface
 	{
         public string bf;
 		public string nick;
@@ -36,7 +36,7 @@ namespace PRoConEvents
 		public List<string> proxies_list;
 		public string last_worked;
 
-		public AntiCrasher4()
+		public AntiCrasher()
         { this.bf = "bf3";
 		  this.nick = "";
 		this.whitelist = "";
@@ -67,7 +67,7 @@ namespace PRoConEvents
 
         public string GetPluginVersion()
         {
-            return "0.3";
+            return "0.3.1";
         }
 
         public string GetPluginAuthor()
@@ -238,19 +238,22 @@ namespace PRoConEvents
 			  .ToDictionary(kvp => (K)kvp.Key, kvp => (V)kvp.Value);
 		}
 
+		public void BanPlayer(string soldierName){
+			this.ExecuteCommand("procon.protected.send", "banList.add", "name", soldierName.ToString(), "perm", "Crasher " + soldierName.ToString());
+			this.ExecuteCommand("procon.protected.send", "banList.save");
+			this.ExecuteCommand("procon.protected.send", "banList.list");
+			this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", "name", soldierName.ToString(), "get out");
+		}
+
 		public override void OnPlayerJoin(string soldierName) {
 			if (this.whitelist.Contains(soldierName))
 			{
 				this.ExecuteCommand("procon.protected.pluginconsole.write", "whitelisted soldier: " + soldierName);
 				return;
 			}
-
 			if (soldierName.Length > 16)
 			{
-				this.ExecuteCommand("procon.protected.send", "banList.add", "name", soldierName.ToString(), "perm", "Crasher " + soldierName.ToString());
-				this.ExecuteCommand("procon.protected.send", "banList.save");
-				this.ExecuteCommand("procon.protected.send", "banList.list");
-				this.ExecuteCommand("procon.protected.send", "admin.kickPlayer", "name", soldierName.ToString(), "get out");
+				BanPlayer(soldierName);
 				return;
 			}
 			string data = SendRequestWithProxy("POST", string.Format("https://battlelog.battlefield.com/{0}/search/query/", this.bf), string.Format("query={0}", soldierName));
@@ -344,15 +347,30 @@ namespace PRoConEvents
 		
 		public override void OnPlayerKilled(Kill kKillerVictimDetails) {}
 		
-		public override void OnPlayerSpawned(string soldierName, Inventory spawnedInventory) {}
+		public override void OnPlayerSpawned(string soldierName, Inventory spawnedInventory) {
+			if (soldierName.Length > 16)
+				BanPlayer(soldierName);
+		}
 		
-		public override void OnPlayerTeamChange(string soldierName, int teamId, int squadId) {}
+		public override void OnPlayerTeamChange(string soldierName, int teamId, int squadId) {
+			if (soldierName.Length > 16)
+				BanPlayer(soldierName);
+		}
 		
-		public override void OnGlobalChat(string speaker, string message) {}
+		public override void OnGlobalChat(string speaker, string message) {
+			if (speaker.Length > 16)
+				BanPlayer(speaker);
+		}
 		
-		public override void OnTeamChat(string speaker, string message, int teamId) {}
+		public override void OnTeamChat(string speaker, string message, int teamId) {
+			if (speaker.Length > 16)
+				BanPlayer(speaker);
+		}
 		
-		public override void OnSquadChat(string speaker, string message, int teamId, int squadId) {}
+		public override void OnSquadChat(string speaker, string message, int teamId, int squadId) {
+			if (speaker.Length > 16)
+				BanPlayer(speaker);
+		}
 		
 		public override void OnRoundOverPlayers(List<CPlayerInfo> players) {}
 		
